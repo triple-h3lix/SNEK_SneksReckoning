@@ -4,6 +4,11 @@ import colors
 import constants
 import sounds
 
+for f in os.listdir('resources/img/'):
+    os.path.join('resources','img',f)
+for f in os.listdir('resources/snd/'):
+    os.path.join('resources','snd',f)
+
 """ Load PyGame library and assign pg.display to the value video to simplify things """
 pg.init()
 video = pg.display
@@ -18,8 +23,7 @@ os.environ['SDL_VIDEO_CENTERED'] = "True"
 font = pg.font.SysFont(None, 30)
 
 """ Preloads images and parameters """
-background = pg.image.load('resources/img/background3.png')
-background = background.convert()
+background = pg.image.load('resources/img/background3.png').convert()
 level_size = background.get_size()
 level_rect = background.get_rect()
 bomb = pg.image.load('resources/img/bomb.png').convert_alpha()
@@ -32,6 +36,7 @@ snakebod = pg.image.load('resources/img/snakebody.png').convert()
 """ Default starting values """
 direction = "right"
 score = 0
+apples_eaten = 0
 
 """ These functions are used to assign the random coordinates """
 
@@ -95,15 +100,17 @@ class Bomb:
         screen.blit(self.pic, (self.x, self.y))
 
 
-def message_to_screen(msg, color):
+def message_to_screen(msg, color, x_offset, y_offset):
     """
     Display text in center of game screen
     :param msg: String you want displayed
     :param color: What color you want the text displayed as
+    :param x_offset: Offset the location of text horizontally
+    :param y_offset: Offset the location of text vertically
     """
     screen_text = font.render(msg, True, color)
-    screen.blit(screen_text, [(constants.display_width / 2) - (screen_text.get_width() / 2),
-                              (constants.display_height / 2) - (screen_text.get_height() / 2)])
+    screen.blit(screen_text, [((constants.display_width / 2)+ x_offset) - (screen_text.get_width() / 2),
+                              ((constants.display_height / 2)+ y_offset) - (screen_text.get_height() / 2)])
     pg.time.wait(1)
 
 
@@ -150,6 +157,7 @@ def gameloop(replay):
     """
     global direction
     global score
+    global apples_eaten
 
     _Running = True
     _GameOver = False
@@ -190,7 +198,7 @@ def gameloop(replay):
         This function controls how much health you have as well as populates your health bar with heart icons
         :param hearts: The number of hearts you start with
         """
-        heart = pg.image.load('heart.png')
+        heart = pg.image.load('resources/img/heart.png')
         heart = heart.convert_alpha()
         heart = pg.transform.scale(heart, (20, 20))
 
@@ -223,6 +231,7 @@ def gameloop(replay):
         Defines what occurs when the player collides with an apple object
         """
         global score
+        global apples_eaten
 
         sounds.eat_apple()
         constants.snake_length += 1
@@ -231,6 +240,7 @@ def gameloop(replay):
         video.update()
         pg.time.wait(60)
         constants.FPS += 0.5
+        apples_eaten += 1
 
     while _Running:
 
@@ -244,21 +254,46 @@ def gameloop(replay):
             sounds.music_stop()
             snake_x = 1
             snake_y = 1
+
             screen.fill(colors.White)
-            message_to_screen("GAME OVER", colors.Red)
+            message_to_screen("GAME OVER", colors.Red, 0, -20)
+            eaten_count = font.render(" x " + str(apples_eaten), True, colors.Black)
             show_score = font.render("Your final score was " + str(score), True, colors.Black)
-            screen.blit(show_score, [(constants.display_width / 2) - (show_score.get_width() / 2), 260])
+            screen.blit(show_score, [(constants.display_width / 2) - (show_score.get_width() / 2), 250])
+
+            """ Add up and display the number of apples you ate after dying """
+            if apples_eaten > 0:
+                for ate in range(apples_eaten+1):
+                    screen.fill(colors.White)
+                    message_to_screen("GAME OVER", colors.Red, 0, -20)
+                    eaten_count = font.render(" x " + str(apples_eaten), True, colors.Black)
+                    show_score = font.render("Your final score was " + str(score), True, colors.Black)
+                    screen.blit(show_score, [(constants.display_width / 2) - (show_score.get_width() / 2), 250])
+                    screen.blit(apple, [(constants.display_width / 2) - 40, 280])
+                    eaten_count = font.render(" x " + str(ate), True, colors.Black)
+                    screen.blit(eaten_count, [((constants.display_width /2) - 10), 280])
+                    pg.time.delay(200)
+                    video.flip()
+                    sounds.bling()
+            else:
+                message_to_screen("GAME OVER", colors.Red, 0, -20)
+                eaten_count = font.render(" x " + str(apples_eaten), True, colors.Black)
+                show_score = font.render("Your final score was " + str(score), True, colors.Black)
+                screen.blit(show_score, [(constants.display_width / 2) - (show_score.get_width() / 2), 250])
+                
             video.flip()
             sounds.game_over()
             pg.time.delay(5000)
             screen.fill(colors.White)
-            message_to_screen("Play again? Y or N", colors.Black)
+            message_to_screen("Play again? Y or N", colors.Black, 0, -20)
             video.update()
 
             while True:
                 for event in pg.event.get():
                     if event.type == pg.KEYDOWN:
                         if event.key == pg.K_y:
+                            constants.snake_length = 3
+                            constants.FPS = 10
                             gameloop(False)
                         if event.key == pg.K_n:
                             scores.write(str(score))
@@ -348,11 +383,12 @@ def gameloop(replay):
             eat_apple()
             apple_x = random_x(apple_size)
             apple_y = random_y(apple_size)
-            bombs.clear()
+            #bombs.clear()
             bombs = [Bomb(random_x(bomb_size), random_y(bomb_size)), Bomb(random_x(bomb_size), random_y(bomb_size)),
                      Bomb(random_x(bomb_size), random_y(bomb_size)), Bomb(random_x(bomb_size), random_y(bomb_size)),
                      Bomb(random_x(bomb_size), random_y(bomb_size))]
             score += 10
+            
 
         for target in bombs:
             if snake_x >= target.x and snake_x <= target.x + 10:

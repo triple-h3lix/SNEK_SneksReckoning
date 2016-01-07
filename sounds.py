@@ -39,3 +39,11 @@ def xplode():
 def bomb():
     sound = pg.mixer.Sound('resources/snd/explode_bomb.ogg')
     sound.play()
+
+def scream():
+    sound = pg.mixer.Sound('resources/snd/scream.ogg')
+    sound.play()
+
+def bling():
+    sound = pg.mixer.Sound('resources/snd/bling.ogg')
+    sound.play()
