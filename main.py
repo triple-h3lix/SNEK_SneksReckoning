@@ -18,16 +18,16 @@ os.environ['SDL_VIDEO_CENTERED'] = "True"
 font = pg.font.SysFont(None, 30)
 
 """ Preloads images and parameters """
-background = pg.image.load('background3.png')
+background = pg.image.load('resources/img/background3.png')
 background = background.convert()
 level_size = background.get_size()
 level_rect = background.get_rect()
-bomb = pg.image.load('bomb.png').convert_alpha()
+bomb = pg.image.load('resources/img/bomb.png').convert_alpha()
 bomb_size = bomb.get_size()
-apple = pg.image.load('apple.png').convert_alpha()
+apple = pg.image.load('resources/img/apple.png').convert_alpha()
 apple_size = apple.get_size()
-img_head = pg.image.load('snakehead.png').convert_alpha()
-snakebod = pg.image.load('snakebody.png').convert()
+img_head = pg.image.load('resources/img/snakehead.png').convert_alpha()
+snakebod = pg.image.load('resources/img/snakebody.png').convert()
 
 """ Default starting values """
 direction = "right"
@@ -111,7 +111,7 @@ def title():
     """
     This shows the title screen before the game starts
     """
-    title_screen = pg.image.load('title.png')
+    title_screen = pg.image.load('resources/img/title.png')
     title_screen.convert()
     screen.blit(title_screen, (0, 0))
     video.flip()
@@ -121,10 +121,10 @@ def flash_screen():
     """
     Just a little animation effect I created to make dying funny
     """
-    dog = pg.image.load('bruh.png')
+    dog = pg.image.load('resources/img/bruh.png')
     dog = pg.transform.scale(dog, (480, 440))
     dog.convert()
-    dog_neg = pg.image.load('bruh_neg.png')
+    dog_neg = pg.image.load('resources/img/bruh_neg.png')
     dog_neg = pg.transform.scale(dog_neg, (480, 440))
     dog.convert()
 
@@ -210,7 +210,7 @@ def gameloop(replay):
         :param: 'loc' is the location of the bomb you hit, to determine where the explosion is shown
         """
 
-        boom = pg.image.load('explosion.png')
+        boom = pg.image.load('resources/img/explosion.png')
         boom = boom.convert_alpha()
         explosion_size = boom.get_size()
         boom = pg.transform.scale(boom, ((explosion_size[0] * 3), (explosion_size[1] * 3)))
