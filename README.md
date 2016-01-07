@@ -12,3 +12,5 @@ Eat the apples and bring forth THE RECKONING. Life force from the apples will ca
 Controls:
 Arrows = (Up, Down, Left, Right)
 Escape = Quit
+
+<All sounds, graphics and music are created by me. Please do not steal them.>
