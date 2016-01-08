@@ -1,21 +1,19 @@
-﻿import os
+﻿import os, sys
 import pygame as pg
 import colors
 import constants
 import sounds
 
-for f in os.listdir('resources/img/'):
-    os.path.join('resources','img',f)
-for f in os.listdir('resources/snd/'):
-    os.path.join('resources','snd',f)
+os.path.join('resources','snd','img')
 
 """ Load PyGame library and assign pg.display to the value video to simplify things """
 pg.init()
 video = pg.display
+flags = (pg.HWSURFACE | pg.FULLSCREEN)
 
 """ Sets up basics for rendering window """
 clock = pg.time.Clock()
-screen = video.set_mode(constants.display_size, pg.HWSURFACE)
+screen = video.set_mode(constants.display_size, flags)
 video.set_caption('SNEK: THE RECKONING')
 os.environ['SDL_VIDEO_CENTERED'] = "True"
 
@@ -217,7 +215,6 @@ def gameloop(replay):
         Defines what occurs whenever the game detects collision between player and bomb object
         :param: 'loc' is the location of the bomb you hit, to determine where the explosion is shown
         """
-
         boom = pg.image.load('resources/img/explosion.png')
         boom = boom.convert_alpha()
         explosion_size = boom.get_size()
@@ -246,8 +243,9 @@ def gameloop(replay):
 
         while _ShowTitle:
             title()
-            pg.time.wait(1500)
             sounds.begin()
+            pg.time.wait(1500)
+            
             _ShowTitle = False
 
         while _GameOver:
@@ -272,7 +270,7 @@ def gameloop(replay):
                     screen.blit(apple, [(constants.display_width / 2) - 40, 280])
                     eaten_count = font.render(" x " + str(ate), True, colors.Black)
                     screen.blit(eaten_count, [((constants.display_width /2) - 10), 280])
-                    pg.time.delay(200)
+                    pg.time.delay(50)
                     video.flip()
                     sounds.bling()
             else:
@@ -294,6 +292,8 @@ def gameloop(replay):
                         if event.key == pg.K_y:
                             constants.snake_length = 3
                             constants.FPS = 10
+                            apples_eaten = 0
+                            score = 0
                             gameloop(False)
                         if event.key == pg.K_n:
                             scores.write(str(score))
@@ -383,11 +383,13 @@ def gameloop(replay):
             eat_apple()
             apple_x = random_x(apple_size)
             apple_y = random_y(apple_size)
-            #bombs.clear()
             bombs = [Bomb(random_x(bomb_size), random_y(bomb_size)), Bomb(random_x(bomb_size), random_y(bomb_size)),
                      Bomb(random_x(bomb_size), random_y(bomb_size)), Bomb(random_x(bomb_size), random_y(bomb_size)),
                      Bomb(random_x(bomb_size), random_y(bomb_size))]
             score += 10
+
+            if (apples_eaten % 10 == 0) and (hearts <= 2):
+                hearts += 1
             
 
         for target in bombs:
@@ -395,6 +397,7 @@ def gameloop(replay):
                 if snake_y >= target.y and snake_y <= target.y + 10:
                     hit_bomb(target)
                     sounds.bomb()
+                    sounds.scream()
                     video.flip()
                     bombs.remove(target)
                     hearts -= 1
@@ -403,6 +406,7 @@ def gameloop(replay):
         clock.tick(constants.FPS)
 
     scores.close()
+        
     pg.quit()
     quit()
 
