@@ -47,3 +47,13 @@ def scream():
 def bling():
     sound = pg.mixer.Sound('resources/snd/bling.ogg')
     sound.play()
+
+def text():
+    sound = pg.mixer.Sound('resources/snd/text.ogg')
+    sound.play()
+
+def startgame():
+    sound = pg.mixer.Sound('resources/snd/startgame.ogg')
+    sound.play()
+
+

@@ -4,7 +4,7 @@ import colors
 import constants
 import sounds
 
-os.path.join('resources','snd','img')
+os.path.join('resources', 'snd', 'img')
 
 """ Load PyGame library and assign pg.display to the value video to simplify things """
 pg.init()
@@ -18,23 +18,44 @@ video.set_caption('SNEK: THE RECKONING')
 os.environ['SDL_VIDEO_CENTERED'] = "True"
 
 """ Loads font for all displayed text """
-font = pg.font.SysFont(None, 30)
+pg.font.init()
+font = pg.font.Font("retro.ttf", 20)
 
 """ Preloads images and parameters """
 background = pg.image.load('resources/img/background3.png').convert()
 level_size = background.get_size()
 level_rect = background.get_rect()
+title_screen = pg.image.load('resources/img/title.png').convert()
 bomb = pg.image.load('resources/img/bomb.png').convert_alpha()
 bomb_size = bomb.get_size()
 apple = pg.image.load('resources/img/apple.png').convert_alpha()
 apple_size = apple.get_size()
 img_head = pg.image.load('resources/img/snakehead.png').convert_alpha()
 snakebod = pg.image.load('resources/img/snakebody.png').convert()
+heart = pg.image.load('resources/img/heart.png').convert_alpha()
+heart = pg.transform.scale(heart, (20, 20))
+dog = pg.image.load('resources/img/bruh.png').convert()
+dog = pg.transform.scale(dog, (480, 440))
+dog_neg = pg.image.load('resources/img/bruh_neg.png').convert()
+dog_neg = pg.transform.scale(dog_neg, (480, 440))
+boom = pg.image.load('resources/img/explosion.png').convert_alpha()
+explosion_size = boom.get_size()
 
 """ Default starting values """
 direction = "right"
 score = 0
 apples_eaten = 0
+
+
+def center_x(obj_width):
+    x = (constants.display_width / 2) - (obj_width / 2)
+    return x
+
+
+def center_y(obj_height):
+    y = (constants.display_height / 2) - (obj_height / 2)
+    return y
+
 
 """ These functions are used to assign the random coordinates """
 
@@ -107,32 +128,64 @@ def message_to_screen(msg, color, x_offset, y_offset):
     :param y_offset: Offset the location of text vertically
     """
     screen_text = font.render(msg, True, color)
-    screen.blit(screen_text, [((constants.display_width / 2)+ x_offset) - (screen_text.get_width() / 2),
-                              ((constants.display_height / 2)+ y_offset) - (screen_text.get_height() / 2)])
+    screen.blit(screen_text, [((constants.display_width / 2) + x_offset) - (screen_text.get_width() / 2),
+                              ((constants.display_height / 2) + y_offset) - (screen_text.get_height() / 2)])
     pg.time.wait(1)
+
+
+def show_text(msg, color, x_coord, y_coord):
+    """
+    Display text at coordinates (for non-centered text)
+    :param msg: String you want displayed
+    :param color: What color you want text displayed as
+    :param x_coord: Horizontal location
+    :param y_coord: Vertical location
+    """
+    screen_text = font.render(msg, True, color)
+    screen.blit(screen_text, (x_coord, y_coord))
+
+
+def letter_by_letter(string):
+    """
+    Display a black screen with text typed letter by letter
+    :param string: Text you want displayed
+    :return:
+    """
+    text = ''
+    for i in range(len(string)):
+        screen.fill(colors.Black)
+        text += string[i]
+        text_surface = font.render(text, True, colors.White)
+        text_rect = text_surface.get_rect()
+        text_rect.center = (constants.display_width / 2, constants.display_height / 2)
+        screen.blit(text_surface, [text_rect[0], text_rect[1], text_rect[2], text_rect[3]])
+        pg.display.update()
+        sounds.text()
+        pg.time.wait(150)
 
 
 def title():
     """
     This shows the title screen before the game starts
     """
-    title_screen = pg.image.load('resources/img/title.png')
-    title_screen.convert()
     screen.blit(title_screen, (0, 0))
     video.flip()
+    while True:
+        ev = pg.event.poll()
+        if ev.type == pg.KEYDOWN and ev.key == pg.K_RETURN:
+            sounds.startgame()
+            break
+    screen.fill(colors.Black)
+    letter_by_letter('I came here to eat apples')
+    letter_by_letter('and chew bubblegum...')
+    pg.time.wait(1000)
+    sounds.begin()
 
 
 def flash_screen():
     """
     Just a little animation effect I created to make dying funny
     """
-    dog = pg.image.load('resources/img/bruh.png')
-    dog = pg.transform.scale(dog, (480, 440))
-    dog.convert()
-    dog_neg = pg.image.load('resources/img/bruh_neg.png')
-    dog_neg = pg.transform.scale(dog_neg, (480, 440))
-    dog.convert()
-
     sounds.music_stop()
     color = [colors.Red, colors.Yellow, colors.Blue, colors.Cyan, colors.Green, colors.Magenta, colors.White]
 
@@ -173,13 +226,6 @@ def gameloop(replay):
     move_x = constants.block_size
     move_y = 0
 
-    """ Opens file to store score data """
-    scores = open('scores.txt', 'w')
-
-    """ Initializes/plays background music """
-    sounds.load_music()
-    sounds.music_play()
-
     """ Player starts with full health (3 hearts) """
     hearts = 3
 
@@ -196,10 +242,6 @@ def gameloop(replay):
         This function controls how much health you have as well as populates your health bar with heart icons
         :param hearts: The number of hearts you start with
         """
-        heart = pg.image.load('resources/img/heart.png')
-        heart = heart.convert_alpha()
-        heart = pg.transform.scale(heart, (20, 20))
-
         lives = (
             (80, 10),
             (120, 10),
@@ -211,13 +253,11 @@ def gameloop(replay):
 
     def hit_bomb(loc):
         global bomb_x, bomb_y
+        global boom
         """
         Defines what occurs whenever the game detects collision between player and bomb object
         :param: 'loc' is the location of the bomb you hit, to determine where the explosion is shown
         """
-        boom = pg.image.load('resources/img/explosion.png')
-        boom = boom.convert_alpha()
-        explosion_size = boom.get_size()
         boom = pg.transform.scale(boom, ((explosion_size[0] * 3), (explosion_size[1] * 3)))
         screen.blit(boom, (loc.x - 40, loc.y - 40))
         video.flip()
@@ -243,9 +283,10 @@ def gameloop(replay):
 
         while _ShowTitle:
             title()
-            sounds.begin()
-            pg.time.wait(1500)
-            
+            pg.time.wait(1000)
+            """ Initializes/plays background music """
+            sounds.load_music()
+            sounds.music_play()
             _ShowTitle = False
 
         while _GameOver:
@@ -255,30 +296,26 @@ def gameloop(replay):
 
             screen.fill(colors.White)
             message_to_screen("GAME OVER", colors.Red, 0, -20)
-            eaten_count = font.render(" x " + str(apples_eaten), True, colors.Black)
             show_score = font.render("Your final score was " + str(score), True, colors.Black)
-            screen.blit(show_score, [(constants.display_width / 2) - (show_score.get_width() / 2), 250])
+            screen.blit(show_score, [(constants.display_width / 2) - (show_score.get_width() / 2), 240])
 
             """ Add up and display the number of apples you ate after dying """
             if apples_eaten > 0:
-                for ate in range(apples_eaten+1):
+                for ate in range(apples_eaten + 1):
                     screen.fill(colors.White)
                     message_to_screen("GAME OVER", colors.Red, 0, -20)
-                    eaten_count = font.render(" x " + str(apples_eaten), True, colors.Black)
                     show_score = font.render("Your final score was " + str(score), True, colors.Black)
-                    screen.blit(show_score, [(constants.display_width / 2) - (show_score.get_width() / 2), 250])
-                    screen.blit(apple, [(constants.display_width / 2) - 40, 280])
+                    screen.blit(show_score, [(constants.display_width / 2) - (show_score.get_width() / 2), 240])
+                    apple_large = pg.transform.scale2x(apple)
+                    screen.blit(apple_large, [(constants.display_width / 2) - 50, 280])
                     eaten_count = font.render(" x " + str(ate), True, colors.Black)
-                    screen.blit(eaten_count, [((constants.display_width /2) - 10), 280])
+                    screen.blit(eaten_count, [(constants.display_width / 2), 290])
+                    sounds.bling()
                     pg.time.delay(50)
                     video.flip()
-                    sounds.bling()
             else:
-                message_to_screen("GAME OVER", colors.Red, 0, -20)
-                eaten_count = font.render(" x " + str(apples_eaten), True, colors.Black)
-                show_score = font.render("Your final score was " + str(score), True, colors.Black)
-                screen.blit(show_score, [(constants.display_width / 2) - (show_score.get_width() / 2), 250])
-                
+                pass
+
             video.flip()
             sounds.game_over()
             pg.time.delay(5000)
@@ -291,11 +328,15 @@ def gameloop(replay):
                     if event.type == pg.KEYDOWN:
                         if event.key == pg.K_y:
                             constants.snake_length = 3
+                            direction = "right"
                             constants.FPS = 10
                             apples_eaten = 0
                             score = 0
+                            sounds.music_play()
                             gameloop(False)
                         if event.key == pg.K_n:
+                            """ Save score to scores.txt and exit """
+                            scores = open('scores.txt', 'w')
                             scores.write(str(score))
                             screen.fill(colors.Black)
                             video.flip()
@@ -334,9 +375,8 @@ def gameloop(replay):
         screen.fill(colors.Black)
         screen.blit(background, (60, 40))
 
-        """ Spawn random objects (apple and bombs) """
+        """ Spawn apples and bombs """
         screen.blit(apple, (apple_x, apple_y))
-        # screen.blit(bomb, (bomb_x, bomb_y))
 
         for i in bombs:
             i.render(screen)
@@ -354,8 +394,7 @@ def gameloop(replay):
         health(hearts)
 
         """ Draw score counter to screen """
-        score_board = font.render("Score: " + str(score), True, colors.White)
-        screen.blit(score_board, [(constants.display_width / 2) - (score_board.get_width() / 2), 10])
+        show_text("Score: " + str(score), colors.White, (constants.display_width / 2) - 50, 5)
 
         """ Game Over when player runs into self """
         for segment in snake_list[:-1]:
@@ -365,7 +404,6 @@ def gameloop(replay):
                 _GameOver = True
 
         """ Game Over if player leaves area """
-
         if snake_x >= constants.level_w + 60 or snake_x <= 60 or snake_y >= constants.level_h + 40 or snake_y <= 40:
             _GameOver = True
             sounds.xplode()
@@ -390,7 +428,6 @@ def gameloop(replay):
 
             if (apples_eaten % 10 == 0) and (hearts <= 2):
                 hearts += 1
-            
 
         for target in bombs:
             if snake_x >= target.x and snake_x <= target.x + 10:
@@ -406,7 +443,7 @@ def gameloop(replay):
         clock.tick(constants.FPS)
 
     scores.close()
-        
+
     pg.quit()
     quit()
 
