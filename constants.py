@@ -7,6 +7,6 @@ level_h = 400
 
 block_size = 10
 apple_size = 20
-FPS = 10
+FPS = 15
 
 snake_length = 3

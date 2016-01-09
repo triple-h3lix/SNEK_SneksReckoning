@@ -1,27 +1,38 @@
-﻿import os, sys
+﻿import os
+
 import pygame as pg
+
 import colors
 import constants
 import sounds
 
-os.path.join('resources', 'snd', 'img')
-
-""" Load PyGame library and assign pg.display to the value video to simplify things """
 pg.init()
-video = pg.display
-flags = (pg.HWSURFACE | pg.FULLSCREEN)
-
-""" Sets up basics for rendering window """
-clock = pg.time.Clock()
-screen = video.set_mode(constants.display_size, flags)
-video.set_caption('SNEK: THE RECKONING')
 os.environ['SDL_VIDEO_CENTERED'] = "True"
 
+""" Create window and render Screen surface """
+clock = pg.time.Clock()
+flags = (pg.HWSURFACE | pg.FULLSCREEN)
+video = pg.display
+video.set_caption('SNEK: THE RECKONING')
+screen = video.set_mode(constants.display_size, flags)
+
 """ Loads font for all displayed text """
-pg.font.init()
 font = pg.font.Font("retro.ttf", 20)
 
 """ Preloads images and parameters """
+_image_library = {}
+
+def img_loader(path):
+    global _image_library
+    img = _image_library.get(path)
+    if img == None:
+        canonicalized = path.replace('/', os.sep).replace('\\', os.sep)
+        img = pg.image.load(canonicalized).convert()
+        _image_library[path] = img
+    img_rect = img.get_rect()
+    img_size = img.get_size()
+    return img, img_rect, img_size
+
 background = pg.image.load('resources/img/background3.png').convert()
 level_size = background.get_size()
 level_rect = background.get_rect()
@@ -39,6 +50,7 @@ dog = pg.transform.scale(dog, (480, 440))
 dog_neg = pg.image.load('resources/img/bruh_neg.png').convert()
 dog_neg = pg.transform.scale(dog_neg, (480, 440))
 boom = pg.image.load('resources/img/explosion.png').convert_alpha()
+boom = pg.transform.scale2x(boom)
 explosion_size = boom.get_size()
 
 """ Default starting values """
@@ -170,6 +182,7 @@ def title():
     """
     screen.blit(title_screen, (0, 0))
     video.flip()
+    sounds.music_play('title_music.ogg')
     while True:
         ev = pg.event.poll()
         if ev.type == pg.KEYDOWN and ev.key == pg.K_RETURN:
@@ -258,8 +271,8 @@ def gameloop(replay):
         Defines what occurs whenever the game detects collision between player and bomb object
         :param: 'loc' is the location of the bomb you hit, to determine where the explosion is shown
         """
-        boom = pg.transform.scale(boom, ((explosion_size[0] * 3), (explosion_size[1] * 3)))
-        screen.blit(boom, (loc.x - 40, loc.y - 40))
+        # boom = pg.transform.scale(boom, ((explosion_size[0] * 3), (explosion_size[1] * 3)))
+        screen.blit(boom, (loc.x - (explosion_size[0]/2)+constants.block_size, loc.y - (explosion_size[1]/2)+constants.block_size))
         video.flip()
         pg.time.wait(20)
 
@@ -284,9 +297,9 @@ def gameloop(replay):
         while _ShowTitle:
             title()
             pg.time.wait(1000)
+            sounds.music_stop()
             """ Initializes/plays background music """
-            sounds.load_music()
-            sounds.music_play()
+            sounds.music_play('the_reckoning.ogg')
             _ShowTitle = False
 
         while _GameOver:
@@ -307,7 +320,7 @@ def gameloop(replay):
                     show_score = font.render("Your final score was " + str(score), True, colors.Black)
                     screen.blit(show_score, [(constants.display_width / 2) - (show_score.get_width() / 2), 240])
                     apple_large = pg.transform.scale2x(apple)
-                    screen.blit(apple_large, [(constants.display_width / 2) - 50, 280])
+                    screen.blit(apple_large, [(constants.display_width / 2) - 70, 280])
                     eaten_count = font.render(" x " + str(ate), True, colors.Black)
                     screen.blit(eaten_count, [(constants.display_width / 2), 290])
                     sounds.bling()
@@ -332,7 +345,7 @@ def gameloop(replay):
                             constants.FPS = 10
                             apples_eaten = 0
                             score = 0
-                            sounds.music_play()
+                            sounds.music_play('the_reckoning.ogg')
                             gameloop(False)
                         if event.key == pg.K_n:
                             """ Save score to scores.txt and exit """
