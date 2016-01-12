@@ -1,4 +1,5 @@
 ﻿import os
+import sys
 
 import pygame as pg
 
@@ -6,6 +7,8 @@ import colors
 import constants
 import sounds
 
+pg.mixer.pre_init(44100, -16, 2, 512)
+pg.mixer.init()
 pg.init()
 os.environ['SDL_VIDEO_CENTERED'] = "True"
 
@@ -14,13 +17,14 @@ clock = pg.time.Clock()
 flags = (pg.HWSURFACE | pg.FULLSCREEN)
 video = pg.display
 video.set_caption('SNEK: THE RECKONING')
-screen = video.set_mode(constants.display_size, flags)
+screen = video.set_mode(constants.display_size)
 
 """ Loads font for all displayed text """
 font = pg.font.Font("retro.ttf", 20)
 
 """ Preloads images and parameters """
 _image_library = {}
+
 
 def img_loader(path):
     global _image_library
@@ -33,40 +37,41 @@ def img_loader(path):
     img_size = img.get_size()
     return img, img_rect, img_size
 
-background = pg.image.load('resources/img/background3.png').convert()
-level_size = background.get_size()
-level_rect = background.get_rect()
-title_screen = pg.image.load('resources/img/title.png').convert()
-bomb = pg.image.load('resources/img/bomb.png').convert_alpha()
-bomb_size = bomb.get_size()
-apple = pg.image.load('resources/img/apple.png').convert_alpha()
-apple_size = apple.get_size()
-img_head = pg.image.load('resources/img/snakehead.png').convert_alpha()
-snakebod = pg.image.load('resources/img/snakebody.png').convert()
-heart = pg.image.load('resources/img/heart.png').convert_alpha()
-heart = pg.transform.scale(heart, (20, 20))
-dog = pg.image.load('resources/img/bruh.png').convert()
-dog = pg.transform.scale(dog, (480, 440))
-dog_neg = pg.image.load('resources/img/bruh_neg.png').convert()
-dog_neg = pg.transform.scale(dog_neg, (480, 440))
-boom = pg.image.load('resources/img/explosion.png').convert_alpha()
-boom = pg.transform.scale2x(boom)
-explosion_size = boom.get_size()
+
+img_background = pg.image.load(os.path.join('resources', 'img', 'background3.png')).convert()
+level_size = img_background.get_size()
+level_rect = img_background.get_rect()
+img_title_screen = pg.image.load(os.path.join('resources', 'img', 'title.png')).convert()
+img_bomb = pg.image.load(os.path.join('resources', 'img', 'bomb.png')).convert_alpha()
+bomb_size = img_bomb.get_size()
+img_apple = pg.image.load(os.path.join('resources', 'img', 'apple.png')).convert_alpha()
+apple_size = img_apple.get_size()
+img_head = pg.image.load(os.path.join('resources', 'img', 'snakehead.png')).convert_alpha()
+img_body = pg.image.load(os.path.join('resources', 'img', 'snakebody.png')).convert()
+img_heart = pg.image.load(os.path.join('resources', 'img', 'heart.png')).convert_alpha()
+img_heart = pg.transform.scale(img_heart, (20, 20))
+img_dog = pg.image.load(os.path.join('resources', 'img', 'bruh.png')).convert()
+img_dog = pg.transform.scale(img_dog, (480, 440))
+img_dog_neg = pg.image.load(os.path.join('resources', 'img', 'bruh_neg.png')).convert()
+img_dog_neg = pg.transform.scale(img_dog_neg, (480, 440))
+img_explosion = pg.image.load(os.path.join('resources', 'img', 'explosion.png')).convert_alpha()
+img_explosion = pg.transform.scale2x(img_explosion)
+explosion_size = img_explosion.get_size()
 
 """ Default starting values """
 direction = "right"
 score = 0
 apples_eaten = 0
 
+""" Places an object origin point at center of screen """
 
-def center_x(obj_width):
+
+def centered(obj_width, obj_height):
     x = (constants.display_width / 2) - (obj_width / 2)
-    return x
-
-
-def center_y(obj_height):
     y = (constants.display_height / 2) - (obj_height / 2)
-    return y
+
+    center = (x, y)
+    return center
 
 
 """ These functions are used to assign the random coordinates """
@@ -84,51 +89,100 @@ def random_y(object_size):
     return y
 
 
-def random_loc(object_size):
-    import random
-    x = round(random.randrange(object_size[0], (constants.level_w - object_size[0])) / 10.0) * 10.0
-    y = round(random.randrange(object_size[1], (constants.level_h - object_size[1])) / 10.0) * 10.0
+class Player(pg.sprite.Sprite):
+    def __init__(self, x, y, move_x, move_y, image=img_head):
+        pg.sprite.Sprite.__init__(self)
+        self.x = int(x)
+        self.y = int(y)
+        self.move_x = move_x
+        self.move_y = move_y
+        self.image = image
+        self.width = self.image.get_width()
+        self.height = self.image.get_height()
+        self.direction = "right"
+        self.body = []
+        self.health = 3
+        self.rect = pg.Rect(self.x, self.y, self.width, self.height)
 
-    location = (x, y)
-    return location
+    def render(self, parts_list):
+        if self.direction == "right":
+            head = pg.transform.rotate(img_head, 270)
+        if self.direction == "left":
+            head = pg.transform.rotate(img_head, 90)
+        if self.direction == "up":
+            head = img_head
+        if self.direction == "down":
+            head = pg.transform.rotate(img_head, 180)
+
+        screen.blit(head, (parts_list[-1][0], parts_list[-1][1]))
+
+        for part in parts_list[:-1]:
+            screen.blit(img_body, [part[0], part[1]])
+
+        return self.rect
+
+    def moveUp(self):
+        self.direction = "up"
+        self.move_x = 0
+        self.move_y = -constants.block_size
+
+    def moveDown(self):
+        self.direction = "down"
+        self.move_x = 0
+        self.move_y = constants.block_size
+
+    def moveLeft(self):
+        self.direction = "left"
+        self.move_x = -constants.block_size
+        self.move_y = 0
+
+    def moveRight(self):
+        self.direction = "right"
+        self.move_x = constants.block_size
+        self.move_y = 0
 
 
-def snake(parts_list):
+class Apple(pg.sprite.Sprite):
     """
-    This function draws the head of the snake, turns it in the appropriate direction, and builds the parts following it
+    A class for tasty apples
     """
-    if direction == "right":
-        head = pg.transform.rotate(img_head, 270)
 
-    if direction == "left":
-        head = pg.transform.rotate(img_head, 90)
+    def __init__(self, x, y):
+        pg.sprite.Sprite.__init__(self)
+        self.x = int(x)
+        self.y = int(y)
+        self.pic = img_apple
+        self.size = self.pic.get_size()
+        self.rect = self.pic.get_rect()
 
-    if direction == "up":
-        head = img_head
-
-    if direction == "down":
-        head = pg.transform.rotate(img_head, 180)
-
-    screen.blit(head, (parts_list[-1][0], parts_list[-1][1]))
-
-    for part in parts_list[:-1]:
-        screen.blit(snakebod, [part[0], part[1]])
+    def render(self, screen):
+        screen.blit(self.pic, (self.x, self.y))
+        return self.rect
 
 
-class Bomb:
+class Bomb(pg.sprite.Sprite):
     """
     A class for our bombs that damage the player
     """
 
-    def __init__(self, x, y, pic=bomb, size=bomb_size):
+    def __init__(self, x, y):
+        pg.sprite.Sprite.__init__(self)
         self.x = int(x)
         self.y = int(y)
-        self.pic = pic
-        self.size = size
-        self.rect = self.pic.get_rect(center=(self.x / 2, self.y / 2))
+        self.pic = img_bomb
+        self.size = self.pic.get_size()
+        self.rect = self.pic.get_rect()
+        self.collider = pg.Rect(self.rect)
 
     def render(self, screen):
         screen.blit(self.pic, (self.x, self.y))
+
+    def is_hit(self, screen):
+        screen.blit(img_explosion, (
+            self.x - (explosion_size[0] / 2) + constants.block_size,
+            self.y - (explosion_size[1] / 2) + constants.block_size))
+        video.flip()
+        pg.time.wait(20)
 
 
 def message_to_screen(msg, color, x_offset, y_offset):
@@ -171,16 +225,16 @@ def letter_by_letter(string):
         text_rect = text_surface.get_rect()
         text_rect.center = (constants.display_width / 2, constants.display_height / 2)
         screen.blit(text_surface, [text_rect[0], text_rect[1], text_rect[2], text_rect[3]])
-        pg.display.update()
         sounds.text()
-        pg.time.wait(150)
+        pg.display.update()
+        pg.time.wait(100)
 
 
 def title():
     """
     This shows the title screen before the game starts
     """
-    screen.blit(title_screen, (0, 0))
+    screen.blit(img_title_screen, (0, 0))
     video.flip()
     sounds.music_play('title_music.ogg')
     while True:
@@ -189,7 +243,8 @@ def title():
             sounds.startgame()
             break
     screen.fill(colors.Black)
-    letter_by_letter('I came here to eat apples')
+    letter_by_letter('I came to eat apples')
+    pg.time.wait(200)
     letter_by_letter('and chew bubblegum...')
     pg.time.wait(1000)
     sounds.begin()
@@ -203,16 +258,30 @@ def flash_screen():
     color = [colors.Red, colors.Yellow, colors.Blue, colors.Cyan, colors.Green, colors.Magenta, colors.White]
 
     for i in color * 4:
-        screen.blit(dog_neg, (120, 20))
+        screen.blit(img_dog_neg, (120, 20))
         pg.time.delay(30)
         video.flip()
         screen.fill(i)
         pg.time.delay(30)
         video.flip()
-        screen.blit(dog, (120, 20))
+        screen.blit(img_dog, (120, 20))
         pg.time.delay(30)
         video.update()
 
+
+def healthbar(num_of_hearts):
+    """
+    This function controls how much health you have as well as populates your health bar with heart icons
+    :param num_of_hearts: The number of hearts you start with
+    """
+    lives = (
+        (80, 10),
+        (120, 10),
+        (160, 10)
+    )
+
+    for i in range(num_of_hearts):
+        screen.blit(img_heart, lives[i])
 
 def gameloop(replay):
     """
@@ -228,53 +297,18 @@ def gameloop(replay):
     _ShowTitle = replay
 
     """ Initial starting points """
-    snake_x = constants.display_width / 2
-    snake_y = constants.display_height / 2
-    apple_x = random_x(apple_size) / 2
-    apple_y = random_x(apple_size) / 2
-    bomb_x = random_x(bomb_size)
-    bomb_y = random_y(bomb_size)
+    # snake_x = constants.display_width / 2
+    # snake_y = constants.display_height / 2
 
-    """ Begin player movement """
-    move_x = constants.block_size
-    move_y = 0
-
-    """ Player starts with full health (3 hearts) """
-    hearts = 3
-
-    """ Assigns the player a body """
-    snake_list = []
+    """ Create instance of player character """
+    player = Player(constants.display_width / 2, constants.display_height / 2, move_x=10, move_y=0)
 
     """ Create the list of bombs to populate the level """
-    bombs = [Bomb(random_x(bomb_size), random_y(bomb_size)), Bomb(random_x(bomb_size), random_y(bomb_size)),
-             Bomb(random_x(bomb_size), random_y(bomb_size)), Bomb(random_x(bomb_size), random_y(bomb_size)),
-             Bomb(random_x(bomb_size), random_y(bomb_size))]
+    apple = Apple(random_x(apple_size), random_y(apple_size))
 
-    def health(hearts):
-        """
-        This function controls how much health you have as well as populates your health bar with heart icons
-        :param hearts: The number of hearts you start with
-        """
-        lives = (
-            (80, 10),
-            (120, 10),
-            (160, 10)
-        )
-
-        for i in range(hearts):
-            screen.blit(heart, lives[i])
-
-    def hit_bomb(loc):
-        global bomb_x, bomb_y
-        global boom
-        """
-        Defines what occurs whenever the game detects collision between player and bomb object
-        :param: 'loc' is the location of the bomb you hit, to determine where the explosion is shown
-        """
-        # boom = pg.transform.scale(boom, ((explosion_size[0] * 3), (explosion_size[1] * 3)))
-        screen.blit(boom, (loc.x - (explosion_size[0]/2)+constants.block_size, loc.y - (explosion_size[1]/2)+constants.block_size))
-        video.flip()
-        pg.time.wait(20)
+    bombs = []
+    for i in range(5):
+        bombs.append(Bomb(random_x(apple_size), random_y(apple_size)))
 
     def eat_apple():
         """
@@ -299,13 +333,13 @@ def gameloop(replay):
             pg.time.wait(1000)
             sounds.music_stop()
             """ Initializes/plays background music """
-            sounds.music_play('the_reckoning.ogg')
+            sounds.music_play('road_to_snekistan.ogg')
             _ShowTitle = False
 
         while _GameOver:
             sounds.music_stop()
-            snake_x = 1
-            snake_y = 1
+            player.x = 1
+            player.y = 1
 
             screen.fill(colors.White)
             message_to_screen("GAME OVER", colors.Red, 0, -20)
@@ -319,7 +353,7 @@ def gameloop(replay):
                     message_to_screen("GAME OVER", colors.Red, 0, -20)
                     show_score = font.render("Your final score was " + str(score), True, colors.Black)
                     screen.blit(show_score, [(constants.display_width / 2) - (show_score.get_width() / 2), 240])
-                    apple_large = pg.transform.scale2x(apple)
+                    apple_large = pg.transform.scale2x(img_apple)
                     screen.blit(apple_large, [(constants.display_width / 2) - 70, 280])
                     eaten_count = font.render(" x " + str(ate), True, colors.Black)
                     screen.blit(eaten_count, [(constants.display_width / 2), 290])
@@ -353,6 +387,7 @@ def gameloop(replay):
                             scores.write(str(score))
                             screen.fill(colors.Black)
                             video.flip()
+                            scores.close()
                             quit()
 
         """ Movement controls """
@@ -361,104 +396,95 @@ def gameloop(replay):
                 _Running = False
 
             if event.type == pg.KEYDOWN:
-                if event.key == pg.K_LEFT and direction != "right":
-                    direction = "left"
-                    move_x = -constants.block_size
-                    move_y = 0
-                elif event.key == pg.K_RIGHT and direction != "left":
-                    direction = "right"
-                    move_x = constants.block_size
-                    move_y = 0
-                elif event.key == pg.K_UP and direction != "down":
-                    direction = "up"
-                    move_y = -constants.block_size
-                    move_x = 0
-                elif event.key == pg.K_DOWN and direction != "up":
-                    direction = "down"
-                    move_y = constants.block_size
-                    move_x = 0
+                if event.key == pg.K_LEFT and player.direction != "right":
+                    player.moveLeft()
+                elif event.key == pg.K_RIGHT and player.direction != "left":
+                    player.moveRight()
+                elif event.key == pg.K_UP and player.direction != "down":
+                    player.moveUp()
+                elif event.key == pg.K_DOWN and player.direction != "up":
+                    player.moveDown()
                 elif event.key == pg.K_ESCAPE:
                     _Running = False
 
         """ Makes sure snake continues moving in current direction """
-        snake_x += move_x
-        snake_y += move_y
+        player.x += player.move_x
+        player.y += player.move_y
 
         """ Create background """
         screen.fill(colors.Black)
-        screen.blit(background, (60, 40))
+        screen.blit(img_background, (60, 40))
 
-        """ Spawn apples and bombs """
-        screen.blit(apple, (apple_x, apple_y))
+        """ Draw apples and bombs """
+        apple.render(screen)
 
         for i in bombs:
             i.render(screen)
 
-        """ Spawn player head and body """
-        snake_head = [snake_x, snake_y]
-        snake_list.append(snake_head)
-        snake(snake_list)
+        """ Draw player head and body """
+        snake_head = [player.x, player.y]
+        player.body.append(snake_head)
+        player.render(player.body)
 
         """ Keeps snake the same length while moving around level """
-        if len(snake_list) > constants.snake_length:
-            del snake_list[0]
+        if len(player.body) > constants.snake_length:
+            del player.body[0]
 
         """ Draw Health Meter """
-        health(hearts)
+        healthbar(player.health)
 
         """ Draw score counter to screen """
         show_text("Score: " + str(score), colors.White, (constants.display_width / 2) - 50, 5)
 
         """ Game Over when player runs into self """
-        for segment in snake_list[:-1]:
+        for segment in player.body[:-1]:
             if segment == snake_head:
                 sounds.xplode()
                 flash_screen()
                 _GameOver = True
 
         """ Game Over if player leaves area """
-        if snake_x >= constants.level_w + 60 or snake_x <= 60 or snake_y >= constants.level_h + 40 or snake_y <= 40:
+        if player.x >= constants.level_w + 60 or player.x <= 60 or player.y >= constants.level_h + 40 or player.y <= 40:
             _GameOver = True
             sounds.xplode()
             flash_screen()
 
         """ Game Over when health hits zero """
-        if hearts == 0:
+        if player.health == 0:
             sounds.xplode()
             flash_screen()
             _GameOver = True
 
         """ Handles collision detection between snake and apples/bombs """
-        if all([snake_x >= apple_x, snake_x < apple_x + apple_size[0], snake_y >= apple_y,
-                snake_y < apple_y + apple_size[1]]):
-            eat_apple()
-            apple_x = random_x(apple_size)
-            apple_y = random_y(apple_size)
-            bombs = [Bomb(random_x(bomb_size), random_y(bomb_size)), Bomb(random_x(bomb_size), random_y(bomb_size)),
-                     Bomb(random_x(bomb_size), random_y(bomb_size)), Bomb(random_x(bomb_size), random_y(bomb_size)),
-                     Bomb(random_x(bomb_size), random_y(bomb_size))]
-            score += 10
+        if apple.x <= player.x < apple.x + apple.size[0]:
+            if apple.y <= player.y < apple.y + apple.size[1]:
+                eat_apple()
+                apple.x = random_x(apple.size)
+                apple.y = random_y(apple.size)
+                score += 10
+                bombs.clear()
+                for i in range(5):
+                    bombs.append(Bomb(random_x(apple_size), random_y(apple_size)))
 
-            if (apples_eaten % 10 == 0) and (hearts <= 2):
-                hearts += 1
+                if (apples_eaten % 10 == 0) and (player.health <= 2):
+                    player.health += 1
 
         for target in bombs:
-            if snake_x >= target.x and snake_x <= target.x + 10:
-                if snake_y >= target.y and snake_y <= target.y + 10:
-                    hit_bomb(target)
+            if target.x <= player.x < target.x + target.size[0]:
+                if target.y <= player.y < target.y + target.size[1]:
+                    target.is_hit(screen)
                     sounds.bomb()
                     sounds.scream()
-                    video.flip()
                     bombs.remove(target)
-                    hearts -= 1
+                    video.flip()
+                    player.health -= 1
 
         video.update()
         clock.tick(constants.FPS)
 
-    scores.close()
-
     pg.quit()
     quit()
+    sys.exit()
 
 
 if __name__ == '__main__':
