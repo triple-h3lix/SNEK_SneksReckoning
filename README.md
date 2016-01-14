@@ -11,9 +11,9 @@ Objective:
 Eat the apples and bring forth THE RECKONING. Life force from the apples will cause your snake to grow, and as your body grows, so does your blood lust. Beware the bombs that stand in your way, and be careful not to turn your hunger onto yourself.
 
 Controls:
-Arrows = (Up, Down, Left, Right)
-Space = Fire
-Escape = Quit
+- Arrows = (Up, Down, Left, Right)
+- Space = Fire
+- Escape = Quit
 
 I have not verified whether the game runs on non-Windows operating systems yet, but please let me know if there are issues with compatibility.
 
