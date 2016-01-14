@@ -56,5 +56,9 @@ def startgame():
     sound = pg.mixer.Sound(os.path.join('resources', 'snd', 'startgame.ogg'))
     sound.play()
 
+def shoot():
+    sound = pg.mixer.Sound(os.path.join('resources', 'snd', 'shoot.ogg'))
+    sound.play()
+
 
 

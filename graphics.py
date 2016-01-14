@@ -25,7 +25,7 @@ for pic in images:
     get_image(pic)
 
 # Use these manually until I figure out a better solution
-img_background = pg.image.load(os.path.join('resources', 'img', 'background3.png')).convert()
+img_background = pg.image.load(os.path.join('resources', 'img', 'background4.png')).convert()
 level_size = img_background.get_size()
 level_rect = img_background.get_rect()
 img_title_screen = pg.image.load(os.path.join('resources', 'img', 'title.png')).convert()
@@ -44,3 +44,4 @@ img_dog_neg = pg.transform.scale(img_dog_neg, (480, 440))
 img_explosion = pg.image.load(os.path.join('resources', 'img', 'explosion.png')).convert_alpha()
 img_explosion = pg.transform.scale2x(img_explosion)
 explosion_size = img_explosion.get_size()
+img_bullet = pg.image.load(os.path.join('resources', 'img', 'bullet.png')).convert_alpha()

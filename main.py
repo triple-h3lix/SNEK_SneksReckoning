@@ -47,7 +47,8 @@ def random_x(object_size):
     :return: x
     """
     import random
-    x = int(round(random.randrange(object_size[0], (constants.level_w - object_size[0])) / 10.0) * 10.0) + 60
+    x = int(round(random.randrange(object_size[0] + constants.block_size,
+                                   (constants.level_w - object_size[0])) / 10.0) * 10.0)  # + 60
     return x
 
 
@@ -58,13 +59,12 @@ def random_y(object_size):
     :return: y
     """
     import random
-    y = int(round(random.randrange(object_size[1], (constants.level_h - object_size[1])) / 10.0) * 10.0) + 40
+    y = int(round(random.randrange(object_size[1] + 50, (constants.level_h - object_size[1])) / 10.0) * 10.0)  # + 40
     return y
 
 
-class Player(pg.sprite.Sprite):
+class Player(object):
     def __init__(self, x, y, move_x, move_y, image=graphics.img_head):
-        pg.sprite.Sprite.__init__(self)
         self.x = int(x)
         self.y = int(y)
         self.move_x = move_x
@@ -137,25 +137,56 @@ class Bomb(pg.sprite.Sprite):
     """
     A class for our bombs that damage the player
     """
+    image = None
 
-    def __init__(self, x, y):
+    def __init__(self):
         pg.sprite.Sprite.__init__(self)
-        self.x = int(x)
-        self.y = int(y)
-        self.pic = graphics.img_bomb
-        self.size = self.pic.get_size()
-        self.rect = self.pic.get_rect()
-        self.collider = pg.Rect(self.rect)
 
-    def render(self, screen):
-        screen.blit(self.pic, (self.x, self.y))
+        if Bomb.image is None:
+            Bomb.image = graphics.img_bomb.convert_alpha()
+
+        self.image = Bomb.image
+        self.size = self.image.get_size()
+        self.rect = self.image.get_rect()
+        self.rect.x = random_x(self.size)
+        self.rect.y = random_y(self.size)
+
+    # def render(self, screen):
+    #     screen.blit(self.pic, (self.x, self.y))
 
     def is_hit(self, screen):
         screen.blit(graphics.img_explosion, (
-            self.x - (graphics.explosion_size[0] / 2) + constants.block_size,
-            self.y - (graphics.explosion_size[1] / 2) + constants.block_size))
+            self.rect.x - (graphics.explosion_size[0] / 2) + constants.block_size,
+            self.rect.y - (graphics.explosion_size[1] / 2) + constants.block_size))
         video.flip()
         pg.time.wait(20)
+
+
+class Bullet(pg.sprite.Sprite):
+    image = None
+
+    def __init__(self, location, direction):
+        pg.sprite.Sprite.__init__(self)
+
+        if Bullet.image is None:
+            Bullet.image = graphics.img_bullet.convert_alpha()
+
+        self.image = Bullet.image
+
+        self.rect = self.image.get_rect()
+        self.rect.topleft = location
+
+        self.direction = direction
+
+    def update(self):
+        if self.direction == "right":
+            self.rect.x += 20
+        elif self.direction == "left":
+            self.rect.x -= 20
+        elif self.direction == "up":
+            self.rect.y -= 20
+        elif self.direction == "down":
+            self.rect.y += 20
 
 
 def message_to_screen(msg, color, x_offset, y_offset):
@@ -220,9 +251,10 @@ def title():
     letter_by_letter('I came to eat apples')
     pg.time.wait(1000)
     letter_by_letter('and chew bubblegum...')
-    pg.time.wait(1000)
-    screen.fill(colors.Black)
+    pg.time.wait(3000)
     sounds.begin()
+    letter_by_letter('And I\'m all out of gum.')
+    screen.fill(colors.Black)
     pg.time.delay(2000)
 
 
@@ -251,15 +283,18 @@ def healthbar(num_of_hearts):
     :param num_of_hearts: The number of hearts you start with
     """
     lives = (
-        (80, 10),
-        (120, 10),
-        (160, 10)
+        (60, 10),
+        (100, 10),
+        (140, 10),
+        (180, 10),
+        (220, 10)
     )
 
     for i in range(num_of_hearts):
         screen.blit(graphics.img_heart, lives[i])
 
 
+# ------------------ MAIN PROGRAM LOOP --------------------------
 def gameloop(replay):
     """
     Everything that makes the game work
@@ -273,19 +308,15 @@ def gameloop(replay):
     _GameOver = False
     _ShowTitle = replay
 
-    """ Initial starting points """
-    # snake_x = constants.display_width / 2
-    # snake_y = constants.display_height / 2
-
-    """ Create instance of player character """
+    """ Create instances of all game objects """
     player = Player(constants.display_width / 2, constants.display_height / 2, move_x=10, move_y=0)
-
-    """ Create the list of bombs to populate the level """
     apple = Apple(random_x(graphics.apple_size), random_y(graphics.apple_size))
 
-    bombs = []
+    bombs = pg.sprite.Group()
     for i in range(5):
-        bombs.append(Bomb(random_x(graphics.apple_size), random_y(graphics.apple_size)))
+        bombs.add(Bomb())
+
+    bullets = pg.sprite.Group()
 
     def eat_apple():
         """
@@ -372,7 +403,7 @@ def gameloop(replay):
             if event.type == pg.QUIT:
                 _Running = False
 
-            if event.type == pg.KEYDOWN:
+            if event.type == pg.KEYDOWN and not event.type == pg.KEYUP:
                 if event.key == pg.K_LEFT and player.direction != "right":
                     player.moveLeft()
                 elif event.key == pg.K_RIGHT and player.direction != "left":
@@ -383,20 +414,28 @@ def gameloop(replay):
                     player.moveDown()
                 elif event.key == pg.K_ESCAPE:
                     _Running = False
+                elif event.key == pg.K_SPACE:
+                    b_x = player.x
+                    b_y = player.y
+                    bullet = Bullet((b_x, b_y), player.direction)
+                    sounds.shoot()
+                    bullets.add(bullet)
+
+        """ Update the sprite locations """
+        bullets.update()
+        bombs.update()
 
         """ Makes sure snake continues moving in current direction """
         player.x += player.move_x
         player.y += player.move_y
 
         """ Create background """
-        screen.fill(colors.Black)
-        screen.blit(graphics.img_background, (60, 40))
+        screen.fill(colors.Blue)
+        screen.blit(graphics.img_background, (0, 0))
 
         """ Draw apples and bombs """
         apple.render(screen)
-
-        for i in bombs:
-            i.render(screen)
+        bombs.draw(screen)
 
         """ Draw player head and body """
         snake_head = [player.x, player.y]
@@ -411,7 +450,10 @@ def gameloop(replay):
         healthbar(player.health)
 
         """ Draw score counter to screen """
-        show_text("Score: " + str(score), colors.White, (constants.display_width / 2) - 50, 5)
+        show_text("Score: " + str(score), colors.White, (constants.display_width - 160), 5)
+
+        """ PEW PEW PEW """
+        bullets.draw(screen)
 
         """ Game Over when player runs into self """
         for segment in player.body[:-1]:
@@ -421,7 +463,7 @@ def gameloop(replay):
                 _GameOver = True
 
         """ Game Over if player leaves area """
-        if player.x >= constants.level_w + 60 or player.x <= 60 or player.y >= constants.level_h + 40 or player.y <= 40:
+        if player.x == 0 or player.x >= constants.level_w or player.y == 40 or player.y >= constants.level_h + 40:
             _GameOver = True
             sounds.xplode()
             flash_screen()
@@ -439,16 +481,22 @@ def gameloop(replay):
                 apple.x = random_x(apple.size)
                 apple.y = random_y(apple.size)
                 score += 10
-                bombs.clear()
+                bombs.empty()
                 for i in range(5):
-                    bombs.append(Bomb(random_x(graphics.apple_size), random_y(graphics.apple_size)))
+                    bombs.remove(i)
+                    bombs.add(Bomb())
 
-                if (apples_eaten % 10 == 0) and (player.health <= 2):
+                if (apples_eaten % 10 == 0) and (player.health <= 4):
                     player.health += 1
 
+        for target in pg.sprite.groupcollide(bombs, bullets, True, True):
+            target.is_hit(screen)
+            video.flip()
+            bombs.remove(target)
+
         for target in bombs:
-            if target.x <= player.x < target.x + target.size[0]:
-                if target.y <= player.y < target.y + target.size[1]:
+            if target.rect.x <= player.x < target.rect.x + target.size[0]:
+                if target.rect.y <= player.y < target.rect.y + target.size[1]:
                     target.is_hit(screen)
                     sounds.bomb()
                     sounds.scream()
