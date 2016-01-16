@@ -1,6 +1,4 @@
-﻿import os
-import sys
-
+import os, sys, random
 import pygame as pg
 
 import colors
@@ -8,25 +6,29 @@ import constants
 import sounds
 import graphics
 
+os.environ['SDL_VIDEO_CENTERED'] = "True"  # Puts window at center of the screen
+
 pg.mixer.pre_init(44100, -16, 2, 512)  # Solved sound delay issue
 pg.mixer.init()
 pg.init()
-os.environ['SDL_VIDEO_CENTERED'] = "True"  # Puts window at center of the screen
 
 """ Create window and render Screen surface """
 clock = pg.time.Clock()
-flags = (pg.HWSURFACE | pg.FULLSCREEN)
+flags = (pg.HWSURFACE | pg.DOUBLEBUF | pg.FULLSCREEN)
 video = pg.display
 video.set_caption('SNEK: THE RECKONING')
-screen = video.set_mode(constants.display_size)
+icon = pg.image.load('snek.ico')
+video.set_icon(icon)
+screen = video.set_mode(constants.display_size, flags)
 
 """ Loads font for all displayed text """
 font = pg.font.Font("retro.ttf", 20)
 
 """ Default starting values """
-direction = "right"
 score = 0
 apples_eaten = 0
+timer = 0
+time_left = 200
 
 
 def centered(obj_width, obj_height):
@@ -151,14 +153,12 @@ class Bomb(pg.sprite.Sprite):
         self.rect.x = random_x(self.size)
         self.rect.y = random_y(self.size)
 
-    # def render(self, screen):
-    #     screen.blit(self.pic, (self.x, self.y))
-
     def is_hit(self, screen):
         screen.blit(graphics.img_explosion, (
             self.rect.x - (graphics.explosion_size[0] / 2) + constants.block_size,
             self.rect.y - (graphics.explosion_size[1] / 2) + constants.block_size))
-        video.flip()
+        video.update()
+        sounds.bomb()
         pg.time.wait(20)
 
 
@@ -238,7 +238,7 @@ def title():
     This shows the title screen before the game starts
     """
     screen.blit(graphics.img_title_screen, (0, 0))
-    video.flip()
+    video.update()
     sounds.music_play('title_music.ogg')
     while True:
         ev = pg.event.poll()
@@ -268,10 +268,10 @@ def flash_screen():
     for i in color * 4:
         screen.blit(graphics.img_dog_neg, (120, 20))
         pg.time.delay(30)
-        video.flip()
+        video.update()
         screen.fill(i)
         pg.time.delay(30)
-        video.flip()
+        video.update()
         screen.blit(graphics.img_dog, (120, 20))
         pg.time.delay(30)
         video.update()
@@ -294,15 +294,33 @@ def healthbar(num_of_hearts):
         screen.blit(graphics.img_heart, lives[i])
 
 
+def eat_apple():
+    """
+    Defines what occurs when the player collides with an apple object
+    """
+    global apples_eaten
+
+    sounds.eat_apple()
+    constants.snake_length += 1
+    screen.fill(colors.White)
+    pg.time.wait(30)
+    video.update()
+    pg.time.wait(60)
+    constants.FPS += 0.5
+    apples_eaten += 1
+
+
 # ------------------ MAIN PROGRAM LOOP --------------------------
 def gameloop(replay):
     """
     Everything that makes the game work
     :param replay: Only show title if NOT restarting
     """
-    global direction
+
     global score
     global apples_eaten
+    global timer
+    global time_left
 
     _Running = True
     _GameOver = False
@@ -318,30 +336,14 @@ def gameloop(replay):
 
     bullets = pg.sprite.Group()
 
-    def eat_apple():
-        """
-        Defines what occurs when the player collides with an apple object
-        """
-        global score
-        global apples_eaten
-
-        sounds.eat_apple()
-        constants.snake_length += 1
-        screen.fill(colors.White)
-        pg.time.wait(30)
-        video.update()
-        pg.time.wait(60)
-        constants.FPS += 0.5
-        apples_eaten += 1
-
     while _Running:
 
         while _ShowTitle:
             title()
             pg.time.wait(1000)
             sounds.music_stop()
-            """ Initializes/plays background music """
-            sounds.music_play('road_to_snekistan.ogg')
+            """ Initializes/plays background music from random selection """
+            sounds.music_play('the_reckoning.ogg')
             _ShowTitle = False
 
         while _GameOver:
@@ -351,7 +353,7 @@ def gameloop(replay):
 
             screen.fill(colors.White)
             message_to_screen("GAME OVER", colors.Red, 0, -20)
-            show_score = font.render("Your final score was " + str(score), True, colors.Black)
+            show_score = font.render("Your final score was {}".format(score), True, colors.Black)
             screen.blit(show_score, [(constants.display_width / 2) - (show_score.get_width() / 2), 240])
 
             """ Add up and display the number of apples you ate after dying """
@@ -359,19 +361,20 @@ def gameloop(replay):
                 for ate in range(apples_eaten + 1):
                     screen.fill(colors.White)
                     message_to_screen("GAME OVER", colors.Red, 0, -20)
-                    show_score = font.render("Your final score was " + str(score), True, colors.Black)
+                    show_score = font.render("Your final score was {}".format(score), True, colors.Black)
                     screen.blit(show_score, [(constants.display_width / 2) - (show_score.get_width() / 2), 240])
                     apple_large = pg.transform.scale2x(graphics.img_apple)
                     screen.blit(apple_large, [(constants.display_width / 2) - 70, 280])
                     eaten_count = font.render(" x " + str(ate), True, colors.Black)
                     screen.blit(eaten_count, [(constants.display_width / 2), 290])
+                    video.flip()
                     sounds.bling()
-                    pg.time.delay(50)
+                    pg.time.delay(100)
                     video.flip()
             else:
                 pass
 
-            video.flip()
+            video.update()
             sounds.game_over()
             pg.time.delay(5000)
             screen.fill(colors.White)
@@ -383,20 +386,19 @@ def gameloop(replay):
                     if event.type == pg.KEYDOWN:
                         if event.key == pg.K_y:
                             constants.snake_length = 3
-                            direction = "right"
+                            player.direction = "right"
                             constants.FPS = 10
                             apples_eaten = 0
                             score = 0
                             sounds.music_play('the_reckoning.ogg')
                             gameloop(False)
                         if event.key == pg.K_n:
-                            """ Save score to scores.txt and exit """
-                            scores = open('scores.txt', 'w')
-                            scores.write(str(score))
                             screen.fill(colors.Black)
-                            video.flip()
-                            scores.close()
+                            video.update()
+                            pg.time.wait(1000)
                             quit()
+
+            _GameOver = False
 
         """ Movement controls """
         for event in pg.event.get():
@@ -420,6 +422,12 @@ def gameloop(replay):
                     bullet = Bullet((b_x, b_y), player.direction)
                     sounds.shoot()
                     bullets.add(bullet)
+
+        timer += 1 / constants.FPS
+        if timer > timer % 1:
+            score += 1
+            timer = 0
+            time_left -= 1
 
         """ Update the sprite locations """
         bullets.update()
@@ -450,7 +458,7 @@ def gameloop(replay):
         healthbar(player.health)
 
         """ Draw score counter to screen """
-        show_text("Score: " + str(score), colors.White, (constants.display_width - 160), 5)
+        show_text("Score: {}".format(score), colors.White, (constants.display_width - 160), 5)
 
         """ PEW PEW PEW """
         bullets.draw(screen)
@@ -474,6 +482,11 @@ def gameloop(replay):
             flash_screen()
             _GameOver = True
 
+        """ Player dies when time runs out """
+        if time_left == 0:
+            flash_screen()
+            _GameOver = True
+
         """ Handles collision detection between snake and apples/bombs """
         if apple.x <= player.x < apple.x + apple.size[0]:
             if apple.y <= player.y < apple.y + apple.size[1]:
@@ -491,25 +504,26 @@ def gameloop(replay):
 
         for target in pg.sprite.groupcollide(bombs, bullets, True, True):
             target.is_hit(screen)
-            video.flip()
+            video.update()
             bombs.remove(target)
+            score += 5
 
         for target in bombs:
             if target.rect.x <= player.x < target.rect.x + target.size[0]:
                 if target.rect.y <= player.y < target.rect.y + target.size[1]:
                     target.is_hit(screen)
-                    sounds.bomb()
                     sounds.scream()
                     bombs.remove(target)
-                    video.flip()
+                    video.update()
                     player.health -= 1
+
+        show_text("Time left: {}".format(time_left), colors.White, 260, 5)
 
         video.update()
         clock.tick(constants.FPS)
 
     pg.quit()
     quit()
-    sys.exit()
 
 
 if __name__ == '__main__':
