@@ -188,6 +188,11 @@ class Bullet(pg.sprite.Sprite):
         elif self.direction == "down":
             self.rect.y += 20
 
+        if self.rect.x == 0 or self.rect.x > constants.display_width:
+            self.kill()
+        if self.rect.y == 0 or self.rect.y > constants.display_height:
+            self.kill()
+
 
 def message_to_screen(msg, color, x_offset, y_offset):
     """
