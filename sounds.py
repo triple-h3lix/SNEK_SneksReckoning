@@ -60,5 +60,9 @@ def shoot():
     sound = pg.mixer.Sound(os.path.join('resources', 'snd', 'shoot.ogg'))
     sound.play()
 
+def times_up():
+    sound = pg.mixer.Sound(os.path.join('resources', 'snd', 'out_of_time.ogg'))
+    sound.play()
+
 
 

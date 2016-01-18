@@ -1,4 +1,4 @@
-import os, sys, random
+import os, sys, random, time
 import pygame as pg
 
 import colors
@@ -28,7 +28,7 @@ font = pg.font.Font("retro.ttf", 20)
 score = 0
 apples_eaten = 0
 timer = 0
-time_left = 200
+time_left = 150
 
 
 def centered(obj_width, obj_height):
@@ -271,13 +271,13 @@ def flash_screen():
     color = [colors.Red, colors.Yellow, colors.Blue, colors.Cyan, colors.Green, colors.Magenta, colors.White]
 
     for i in color * 4:
-        screen.blit(graphics.img_dog_neg, (120, 20))
+        screen.blit(graphics.img_dog_neg, centered(graphics.img_dog.get_width(), graphics.img_dog.get_height()))
         pg.time.delay(30)
         video.update()
         screen.fill(i)
         pg.time.delay(30)
         video.update()
-        screen.blit(graphics.img_dog, (120, 20))
+        screen.blit(graphics.img_dog, centered(graphics.img_dog_neg.get_width(), graphics.img_dog_neg.get_height()))
         pg.time.delay(30)
         video.update()
 
@@ -319,7 +319,7 @@ def eat_apple():
 def gameloop(replay):
     """
     Everything that makes the game work
-    :param replay: Only show title if NOT restarting
+    :param replay: Only show title screen at first start of game loop, else False
     """
 
     global score
@@ -392,7 +392,7 @@ def gameloop(replay):
                         if event.key == pg.K_y:
                             constants.snake_length = 3
                             player.direction = "right"
-                            constants.FPS = 10
+                            constants.FPS = 15
                             apples_eaten = 0
                             score = 0
                             sounds.music_play('the_reckoning.ogg')
@@ -489,7 +489,14 @@ def gameloop(replay):
 
         """ Player dies when time runs out """
         if time_left == 0:
-            flash_screen()
+            sounds.music_stop()
+            sounds.times_up()
+            screen.fill(colors.Black)
+            video.flip()
+            pg.time.delay(50)
+            screen.blit(graphics.img_time_up, (0, 0))
+            video.flip()
+            pg.time.wait(4000)
             _GameOver = True
 
         """ Handles collision detection between snake and apples/bombs """
@@ -522,7 +529,9 @@ def gameloop(replay):
                     video.update()
                     player.health -= 1
 
-        show_text("Time left: {}".format(time_left), colors.White, 260, 5)
+        m, s = divmod(time_left, 60)
+        show_text("Time left - {}:{:02}".format(m, s), colors.White, 260, 5)
+        # show_text("Time left: " + time.strftime("%M:%S", time.gmtime(time_left)), colors.White, 260, 5)
 
         video.update()
         clock.tick(constants.FPS)

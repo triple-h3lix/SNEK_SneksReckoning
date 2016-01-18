@@ -12,6 +12,7 @@ screen = video.set_mode(constants.display_size)
 images = glob.glob('*.png')
 image_cache = {}
 
+
 def get_image(path):
     img = image_cache.get(path)
     path = os.path.join('resources', 'img', img)
@@ -20,6 +21,7 @@ def get_image(path):
     rect = img.get_rect()
     size = img.get_size()
     return img, rect, size
+
 
 for pic in images:
     get_image(pic)
@@ -45,3 +47,4 @@ img_explosion = pg.image.load(os.path.join('resources', 'img', 'explosion.png'))
 img_explosion = pg.transform.scale2x(img_explosion)
 explosion_size = img_explosion.get_size()
 img_bullet = pg.image.load(os.path.join('resources', 'img', 'bullet.png')).convert_alpha()
+img_time_up = pg.image.load(os.path.join('resources', 'img', 'time_up.png')).convert()
