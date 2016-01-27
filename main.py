@@ -6,7 +6,7 @@ import constants
 import sounds
 import graphics
 
-os.environ['SDL_VIDEO_CENTERED'] = "True"  # Puts window at center of the screen
+os.environ['SDL_VIDEO_CENTERED'] = 'True'  # Puts window at center of the screen
 
 pg.mixer.pre_init(44100, -16, 2, 512)  # Solved sound delay issue
 pg.mixer.init()
@@ -29,6 +29,8 @@ score = 0
 apples_eaten = 0
 timer = 0
 time_left = 150
+
+start_level = True
 
 
 def centered(obj_width, obj_height):
@@ -89,8 +91,10 @@ class Player(object):
         if self.direction == "down":
             head = pg.transform.rotate(graphics.img_head, 180)
 
+        """ Draw the head """
         screen.blit(head, (parts_list[-1][0], parts_list[-1][1]))
 
+        """ Draw the parts of the body """
         for part in parts_list[:-1]:
             screen.blit(graphics.img_body, [part[0], part[1]])
 
@@ -282,6 +286,29 @@ def flash_screen():
         video.update()
 
 
+def level_marquee(number):
+    """
+    This while display a neat little scrolling marquee that tells you what stage you are playing
+    :param number: The number indicating the stage number
+    :return:
+    """
+    card = pg.image.load(os.path.join("resources", "img", "marquee.png")).convert_alpha()
+    stage = font.render("STAGE {}".format(str(number)), True, colors.White)
+    stage = pg.transform.scale2x(stage)
+
+    for i in range(400):
+        screen.blit(graphics.img_background, (0, 0))
+        screen.blit(card, (i*2, 300))
+        if i <= 180:
+            screen.blit(stage, (constants.display_width/2, 320))
+        video.update()
+        pg.time.delay(2)
+        i += 1
+        video.flip()
+
+    video.update()
+
+
 def healthbar(num_of_hearts):
     """
     This function controls how much health you have as well as populates your health bar with heart icons
@@ -322,6 +349,7 @@ def gameloop(replay):
     :param replay: Only show title screen at first start of game loop, else False
     """
 
+    global start_level
     global score
     global apples_eaten
     global timer
@@ -347,7 +375,8 @@ def gameloop(replay):
             title()
             pg.time.wait(1000)
             sounds.music_stop()
-            """ Initializes/plays background music from random selection """
+            start_level = True
+            """ Initializes background music """
             sounds.music_play('the_reckoning.ogg')
             _ShowTitle = False
 
@@ -395,14 +424,15 @@ def gameloop(replay):
                             constants.FPS = 15
                             apples_eaten = 0
                             score = 0
+                            time_left = 150
                             sounds.music_play('the_reckoning.ogg')
+                            start_level = True
                             gameloop(False)
-                        if event.key == pg.K_n:
+                        elif event.key == pg.K_n:
                             screen.fill(colors.Black)
                             video.update()
                             pg.time.wait(1000)
                             quit()
-
             _GameOver = False
 
         """ Movement controls """
@@ -428,11 +458,13 @@ def gameloop(replay):
                     sounds.shoot()
                     bullets.add(bullet)
 
-        timer += 1 / constants.FPS
-        if timer > timer % 1:
-            score += 1
-            timer = 0
-            time_left -= 1
+        """ Display which stage you are on """
+        if start_level:
+            while True:
+                level_marquee(1)
+                pg.time.delay(100)
+                start_level = False
+                break
 
         """ Update the sprite locations """
         bullets.update()
@@ -443,7 +475,6 @@ def gameloop(replay):
         player.y += player.move_y
 
         """ Create background """
-        screen.fill(colors.Blue)
         screen.blit(graphics.img_background, (0, 0))
 
         """ Draw apples and bombs """
@@ -468,6 +499,18 @@ def gameloop(replay):
         """ PEW PEW PEW """
         bullets.draw(screen)
 
+        """ Time left - 1 second """
+        timer += 1 / constants.FPS
+        if timer > timer % 1:
+            score += 1
+            timer = 0
+            time_left -= 1
+
+        """ Display time left """
+        m, s = divmod(time_left, 60)
+        show_text("Time left - {}:{:02}".format(m, s), colors.White, 260, 5)
+
+        # ============== LOGIC RELATED STUFF =================== #
         """ Game Over when player runs into self """
         for segment in player.body[:-1]:
             if segment == snake_head:
@@ -514,12 +557,14 @@ def gameloop(replay):
                 if (apples_eaten % 10 == 0) and (player.health <= 4):
                     player.health += 1
 
+        """ Destroy bombs when you shoot them """
         for target in pg.sprite.groupcollide(bombs, bullets, True, True):
             target.is_hit(screen)
             video.update()
             bombs.remove(target)
             score += 5
 
+        """ Damage player when they hit a bomb """
         for target in bombs:
             if target.rect.x <= player.x < target.rect.x + target.size[0]:
                 if target.rect.y <= player.y < target.rect.y + target.size[1]:
@@ -529,9 +574,7 @@ def gameloop(replay):
                     video.update()
                     player.health -= 1
 
-        m, s = divmod(time_left, 60)
-        show_text("Time left - {}:{:02}".format(m, s), colors.White, 260, 5)
-        # show_text("Time left: " + time.strftime("%M:%S", time.gmtime(time_left)), colors.White, 260, 5)
+
 
         video.update()
         clock.tick(constants.FPS)
