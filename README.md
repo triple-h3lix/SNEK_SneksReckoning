@@ -1,5 +1,5 @@
 <p align="center">
-<img src="http://i.imgur.com/ASXq8Ea.png"></img>
+<img src="http://i.imgur.com/blsjVrj.jpg"></img>
 </p>
 
 SNEK: The Reckoning is a clone of the classic game Snake, but with my own personal twist on it. It was built using Python 3.4 and PyGame.
