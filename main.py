@@ -6,8 +6,7 @@ import constants
 import sounds
 import graphics
 
-os.environ['SDL_VIDEO_CENTERED'] = 'True'  # Puts window at center of the screen
-
+""" Initialize the pygame engine """
 pg.mixer.pre_init(44100, -16, 2, 512)  # Solved sound delay issue
 pg.mixer.init()
 pg.init()
@@ -52,7 +51,7 @@ def random_x(object_size):
     """
     import random
     x = int(round(random.randrange(object_size[0] + constants.block_size,
-                                   (constants.level_w - object_size[0])) / 10.0) * 10.0)  # + 60
+                                   (constants.level_w - object_size[0])) / constants.block_size) * constants.block_size)  # + 60
     return x
 
 
@@ -63,7 +62,7 @@ def random_y(object_size):
     :return: y
     """
     import random
-    y = int(round(random.randrange(object_size[1] + 50, (constants.level_h - object_size[1])) / 10.0) * 10.0)  # + 40
+    y = int(round(random.randrange(object_size[1] + 50, (constants.level_h - object_size[1])) / constants.block_size) * constants.block_size)  # + 40
     return y
 
 
@@ -317,9 +316,7 @@ def healthbar(num_of_hearts):
     lives = (
         (60, 10),
         (100, 10),
-        (140, 10),
-        (180, 10),
-        (220, 10)
+        (140, 10)
     )
 
     for i in range(num_of_hearts):
@@ -360,7 +357,7 @@ def gameloop(replay):
     _ShowTitle = replay
 
     """ Create instances of all game objects """
-    player = Player(constants.display_width / 2, constants.display_height / 2, move_x=10, move_y=0)
+    player = Player(constants.display_width / 2, constants.display_height / 2, move_x=constants.block_size, move_y=0)
     apple = Apple(random_x(graphics.apple_size), random_y(graphics.apple_size))
 
     bombs = pg.sprite.Group()
@@ -548,13 +545,13 @@ def gameloop(replay):
                 eat_apple()
                 apple.x = random_x(apple.size)
                 apple.y = random_y(apple.size)
-                score += 10
+                score += constants.block_size
                 bombs.empty()
                 for i in range(5):
                     bombs.remove(i)
                     bombs.add(Bomb())
 
-                if (apples_eaten % 10 == 0) and (player.health <= 4):
+                if (apples_eaten % constants.block_size == 0) and (player.health <= 3):
                     player.health += 1
 
         """ Destroy bombs when you shoot them """
@@ -579,9 +576,11 @@ def gameloop(replay):
         video.update()
         clock.tick(constants.FPS)
 
-    pg.quit()
-    quit()
+
 
 
 if __name__ == '__main__':
+    os.environ['SDL_VIDEO_CENTERED'] = 'True'  # Puts window at center of the screen
     gameloop(True)
+    pg.quit()
+    quit()
